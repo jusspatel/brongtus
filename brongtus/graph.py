@@ -10,6 +10,7 @@ from .schemas import SearchResult, SearchResponse, ScrapedDocument
 from .scraper import WebScraper
 from .compressor import TokenCompressor
 from .llm import LLMClient
+from .router import AgenticTemporalRouter
 
 
 class SearchGraphState(TypedDict):
@@ -27,6 +28,10 @@ class SearchGraphState(TypedDict):
     total_compressed_chars: int
     token_savings_percent: float
     enable_hitl: bool
+    is_time_sensitive: bool
+    temporal_cues: List[str]
+    system_date: str
+    routing_strategy: str
 
 
 def create_search_graph(
@@ -35,9 +40,25 @@ def create_search_graph(
     llm: LLMClient,
 ):
     """Constructs the LangGraph stateful search graph."""
+    temporal_router = AgenticTemporalRouter()
 
-    # Node 1: Planner - Generate sub-queries
+    # Node 0: Agentic Router - Dynamic Temporal & Hallucination Guard (<0.1ms)
+    def router_node(state: SearchGraphState):
+        decision = temporal_router.route(state["original_query"], has_gemini=llm.has_gemini)
+        return {
+            "is_time_sensitive": decision["is_time_sensitive"],
+            "temporal_cues": decision["temporal_cues"],
+            "system_date": decision["system_date"],
+            "routing_strategy": decision["strategy"],
+        }
+
+    # Node 1: Planner - Generate sub-queries with hallucination protection
     async def planner_node(state: SearchGraphState):
+        # If time-sensitive and local, avoid letting local model hallucinate query plans
+        if state.get("routing_strategy") == "local_strictly_grounded":
+            orig = state["original_query"]
+            return {"sub_queries": [orig, f"{orig} news analysis"]}
+
         queries = await llm.expand_queries(state["original_query"], max_queries=3)
         return {"sub_queries": queries}
 
@@ -224,6 +245,7 @@ def create_search_graph(
     # Build graph
     builder = StateGraph(SearchGraphState)
 
+    builder.add_node("router", router_node)
     builder.add_node("planner", planner_node)
     builder.add_node("search_fanout", search_fanout_node)
     builder.add_node("hitl_review", hitl_review_node)
@@ -231,7 +253,8 @@ def create_search_graph(
     builder.add_node("compressor", compress_node)
     builder.add_node("curator", curate_node)
 
-    builder.add_edge(START, "planner")
+    builder.add_edge(START, "router")
+    builder.add_edge("router", "planner")
     builder.add_edge("planner", "search_fanout")
     builder.add_edge("search_fanout", "hitl_review")
     builder.add_edge("hitl_review", "scraper")

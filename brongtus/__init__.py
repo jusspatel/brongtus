@@ -6,6 +6,7 @@ from .compressor import TokenCompressor
 from .scraper import WebScraper
 from .llm import LLMClient
 from .graph import create_search_graph
+from .router import AgenticTemporalRouter
 
 __version__ = "0.1.0"
 __all__ = [
@@ -16,5 +17,6 @@ __all__ = [
     "TokenCompressor",
     "WebScraper",
     "LLMClient",
+    "AgenticTemporalRouter",
     "create_search_graph",
 ]

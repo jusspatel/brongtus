@@ -19,7 +19,7 @@ class BrongtusRetriever(BaseRetriever):
         k: int = 5,
         local_model: Optional[str] = "qwen2.5:7b",
         gemini_api_key: Optional[str] = None,
-        gemini_model: str = "gemini-2.5-flash",
+        gemini_model: str = "gemini-3.6-flash",
         custom_llm: Optional[Any] = None,
         enable_compression: bool = True,
         headless: bool = True,

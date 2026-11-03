@@ -51,7 +51,7 @@ class LLMClient:
         _load_env_file()
         self.local_model = local_model
         self.gemini_api_key = gemini_api_key or os.getenv("GEMINI_API_KEY")
-        self.gemini_model = gemini_model or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        self.gemini_model = gemini_model or os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
         self.custom_llm = custom_llm
         self.ollama_base_url = ollama_base_url
         self._gemini_chat = None

@@ -17,7 +17,7 @@ class Brongtus:
         self,
         local_model: Optional[str] = "qwen2.5:7b",
         gemini_api_key: Optional[str] = None,
-        gemini_model: str = "gemini-2.5-flash",
+        gemini_model: str = "gemini-3.6-flash",
         custom_llm: Optional[Any] = None,
         enable_compression: bool = True,
         target_compression_words: int = 500,
@@ -58,6 +58,10 @@ class Brongtus:
             "total_compressed_chars": 0,
             "token_savings_percent": 0.0,
             "enable_hitl": self.enable_hitl,
+            "is_time_sensitive": False,
+            "temporal_cues": [],
+            "system_date": "",
+            "routing_strategy": "standard",
         }
 
         output_state = await self._graph.ainvoke(initial_state)

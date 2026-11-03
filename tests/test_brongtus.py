@@ -72,3 +72,15 @@ def test_langchain_retriever_instantiation():
         headless=True,
     )
     assert retriever.k == 3
+
+
+def test_agentic_temporal_router():
+    from brongtus import AgenticTemporalRouter
+    router = AgenticTemporalRouter()
+
+    decision_local = router.route("recent market crisis", has_gemini=False)
+    assert decision_local["strategy"] == "local_strictly_grounded"
+    assert "system_date" in decision_local
+
+    decision_gemini = router.route("recent market crisis", has_gemini=True)
+    assert decision_gemini["strategy"] == "gemini_online_grounded"
