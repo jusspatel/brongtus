@@ -165,7 +165,7 @@ def create_search_graph(
 
         # Fact check Reddit discussions if Gemini is active
         reddit_check_task = None
-        if llm.has_gemini and state.get("reddit_docs"):
+        if llm.has_gemini:
             verified_snippets = [doc.get("compressed_text", "") for doc in state.get("scraped_docs", [])]
             reddit_check_task = llm.fact_check_reddit_insights(
                 query=state["original_query"],
@@ -178,17 +178,38 @@ def create_search_graph(
 
         final_results = []
         for item, curation in zip(state.get("scraped_docs", []), curated_outputs):
+            score = curation.get("score") if curation.get("score") is not None else 0.7
+            title = item.get("title", "")
+            # Skip empty or blocked pages (e.g. Cloudflare challenges, empty 0.0 results)
+            if (score <= 0.1 and not curation.get("highlights")) or "Cloudflare" in title:
+                continue
+
             final_results.append({
                 "id": item["url"],
                 "url": item["url"],
-                "title": item.get("title", ""),
-                "score": curation.get("score", 0.7),
+                "title": title,
+                "score": score,
                 "text": item.get("compressed_text", ""),
                 "highlights": curation.get("highlights", []),
                 "summary": curation.get("summary", ""),
                 "raw_length": item.get("raw_length", 0),
                 "compressed_length": item.get("compressed_length", 0),
             })
+
+        # Fallback to keep at least 1 result if all hits were bot-challenged
+        if not final_results and state.get("scraped_docs"):
+            for item, curation in zip(state.get("scraped_docs", []), curated_outputs):
+                final_results.append({
+                    "id": item["url"],
+                    "url": item["url"],
+                    "title": item.get("title", ""),
+                    "score": curation.get("score", 0.0),
+                    "text": item.get("compressed_text", ""),
+                    "highlights": curation.get("highlights", []),
+                    "summary": curation.get("summary", ""),
+                    "raw_length": item.get("raw_length", 0),
+                    "compressed_length": item.get("compressed_length", 0),
+                })
 
         # Sort by relevance score
         final_results.sort(key=lambda x: x.get("score") or 0.0, reverse=True)

@@ -3,6 +3,10 @@
 import os
 import sys
 import asyncio
+import warnings
+
+# Suppress harmless sampling warnings from langchain_google_genai
+warnings.filterwarnings("ignore", category=UserWarning)
 
 # Ensure utf-8 output on Windows consoles
 if sys.platform == "win32":

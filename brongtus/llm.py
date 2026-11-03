@@ -3,8 +3,12 @@
 import os
 import json
 import re
+import warnings
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
+
+# Suppress harmless sampling warnings from langchain_google_genai
+warnings.filterwarnings("ignore", category=UserWarning, module="langchain_google_genai")
 
 
 def _load_env_file():
@@ -60,11 +64,14 @@ class LLMClient:
         if self.gemini_api_key:
             try:
                 from langchain_google_genai import ChatGoogleGenerativeAI
-                self._gemini_chat = ChatGoogleGenerativeAI(
-                    model=self.gemini_model,
-                    google_api_key=self.gemini_api_key,
-                    temperature=0.2,
-                )
+                kwargs = {
+                    "model": self.gemini_model,
+                    "google_api_key": self.gemini_api_key,
+                }
+                # Models with fixed sampling defaults reject custom temperature
+                if "3.6-flash" not in self.gemini_model:
+                    kwargs["temperature"] = 0.2
+                self._gemini_chat = ChatGoogleGenerativeAI(**kwargs)
             except Exception as e:
                 print(f"[Warning] Found GEMINI_API_KEY but failed to initialize Gemini model '{self.gemini_model}': {e}")
 
@@ -99,7 +106,18 @@ class LLMClient:
         if model is not None:
             try:
                 response = await model.ainvoke(prompt)
-                return getattr(response, "content", str(response))
+                content = getattr(response, "content", str(response))
+                if isinstance(content, list):
+                    text_parts = []
+                    for block in content:
+                        if isinstance(block, dict) and "text" in block:
+                            text_parts.append(block["text"])
+                        elif hasattr(block, "text"):
+                            text_parts.append(block.text)
+                        elif isinstance(block, str):
+                            text_parts.append(block)
+                    return "\n".join(text_parts)
+                return str(content)
             except Exception:
                 pass
 
@@ -166,50 +184,60 @@ class LLMClient:
         self,
         query: str,
         verified_passages: List[str],
-        reddit_docs: List[Dict[str, Any]],
+        reddit_docs: Optional[List[Dict[str, Any]]] = None,
     ) -> Optional[Dict[str, Any]]:
         """Cross-check Reddit community discussions against verified web sources to filter rumors.
         
         Only executed when Gemini is enabled, avoiding hallucinations from small local models.
         """
-        if not self.has_gemini or not reddit_docs:
+        if not self.has_gemini:
             return None
 
-        reddit_text_blocks = []
-        reddit_urls = []
-        for r in reddit_docs[:3]:
-            u = r.get("url", "")
-            if u:
-                reddit_urls.append(u)
-            reddit_text_blocks.append(f"Reddit Source ({u}):\n{r.get('compressed_text', '')[:600]}")
-
-        verified_text_block = "\n---\n".join([v[:400] for v in verified_passages[:4]])
+        verified_text_block = "\n---\n".join([v[:400] for v in verified_passages[:3]])
 
         prompt = (
             f"You are a rigorous research fact-checker.\n"
             f"Topic/Query: '{query}'\n\n"
             f"--- VERIFIED FACTUAL WEB SOURCES (News, Official Docs, Academic Papers) ---\n"
             f"{verified_text_block}\n\n"
-            f"--- REDDIT COMMUNITY DISCUSSIONS & COMMENTS ---\n"
-            f"{chr(10).join(reddit_text_blocks)}\n\n"
             f"Instructions:\n"
-            f"1. Summarize the general community sentiment or consensus from Reddit.\n"
-            f"2. Fact-check the Reddit claims against the verified web sources:\n"
-            f"   - verified_takeaways: Reddit opinions/observations that align with verified reality or offer genuine practical user nuance.\n"
-            f"   - debunked_or_unverified: Baseless rumors, outdated information, or speculation found in Reddit comments.\n"
-            f"3. Return ONLY a valid JSON object with keys:\n"
+            f"1. Search and analyze actual developer and user discussions on Reddit regarding '{query}'.\n"
+            f"2. Summarize the authentic community sentiment or consensus from Reddit.\n"
+            f"3. Fact-check the Reddit discussions against verified technical realities:\n"
+            f"   - verified_takeaways: Community observations, real-world experiences, and nuances that are factually verified.\n"
+            f"   - debunked_or_unverified: Baseless rumors, outdated information, or misconceptions found in community chatter.\n"
+            f"4. Return ONLY a valid JSON object with keys:\n"
             f"   'community_sentiment' (string),\n"
             f"   'verified_takeaways' (list of strings),\n"
-            f"   'debunked_or_unverified' (list of strings),\n"
-            f"   'reddit_sources' (list of strings).\n"
+            f"   'debunked_or_unverified' (list of strings).\n"
+            f"Do NOT include any markdown code fences around the JSON."
         )
 
+        # Attempt search-grounded Gemini query for live Reddit threads
+        try:
+            import asyncio
+            from google import genai
+            from google.genai import types
+
+            client = genai.Client(api_key=self.gemini_api_key)
+            response = await asyncio.to_thread(
+                client.models.generate_content,
+                model=self.gemini_model,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    tools=[types.Tool(google_search=types.GoogleSearch())]
+                )
+            )
+            result = self._parse_json_dict(response.text)
+            if result and ("community_sentiment" in result or "verified_takeaways" in result):
+                return result
+        except Exception:
+            pass
+
+        # Fallback to standard model invocation
         resp = await self._invoke(prompt, prefer_gemini=True)
         result = self._parse_json_dict(resp)
-        if result:
-            result.setdefault("reddit_sources", reddit_urls)
-            return result
-        return None
+        return result if result else None
 
     def _parse_json_list(self, text: str) -> List[str]:
         try:
@@ -222,7 +250,9 @@ class LLMClient:
 
     def _parse_json_dict(self, text: str) -> Dict[str, Any]:
         try:
-            match = re.search(r"\{.*\}", text, re.DOTALL)
+            cleaned = re.sub(r"^```(?:json)?\s*", "", text.strip(), flags=re.MULTILINE)
+            cleaned = re.sub(r"\s*```$", "", cleaned.strip(), flags=re.MULTILINE)
+            match = re.search(r"\{.*\}", cleaned, re.DOTALL)
             if match:
                 return json.loads(match.group(0))
         except Exception:
