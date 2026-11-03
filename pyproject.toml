@@ -54,5 +54,4 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/brongtus/brongtus"
-Repository = "https://github.com/brongtus/brongtus"
+Repository = "https://github.com/jusspatel/brongtus"
