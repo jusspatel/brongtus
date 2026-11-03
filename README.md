@@ -1,4 +1,4 @@
-# 🌐 Brongtus
+# Brongtus
 
 [![PyPI version](https://img.shields.io/pypi/v/brongtus.svg)](https://pypi.org/project/brongtus/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
@@ -8,19 +8,19 @@
 
 ---
 
-## ⚡ Highlights
+## Highlights
 
-- 🆓 **100% Free & Open-Source:** No mandatory API subscriptions.
-- 🎭 **Playwright Powered:** Renders modern JavaScript, SPAs, and dynamic web pages.
-- ✂️ **Up to 90% Algorithmic Token Pruning:** Uses `justext`, `trafilatura`, and BM25 Okapi passage ranking to strip boilerplates, ads, and navigation noise without hardcoded lists.
-- 🧠 **Hybrid Intelligence (Local + Gemini):**
+- **100% Free & Open-Source:** No mandatory API subscriptions.
+- **Playwright Powered:** Renders modern JavaScript, SPAs, and dynamic web pages.
+- **Up to 90% Algorithmic Token Pruning:** Uses `justext`, `trafilatura`, and BM25 Okapi passage ranking to strip boilerplates, ads, and navigation noise without hardcoded lists.
+- **Hybrid Intelligence (Local + Gemini):**
   - **Local Mode**: Runs offline via Ollama (`qwen2.5`, `llama3.2`, `deepseek-r1`) or built-in heuristic extractors.
   - **Gemini Hybrid Mode**: Pass your `GEMINI_API_KEY` (defaults to `gemini-3.6-flash`) to unlock ultra-sharp curation and **Reddit community discussion cross-verification** (filtering out rumors while capturing verified community consensus).
-- 🦜 **First-Class LangChain Integration:** Natively implements `BaseTool` and `BaseRetriever` ready for AI agents and RAG pipelines.
+- **First-Class LangChain Integration:** Natively implements `BaseTool` and `BaseRetriever` ready for AI agents and RAG pipelines.
 
 ---
 
-## 📦 Installation
+## Installation
 
 ```bash
 pip install brongtus
@@ -34,7 +34,7 @@ pip install "brongtus[gemini,local-llm]"
 
 ---
 
-## 🚀 Quickstart
+## Quickstart
 
 ### 1. Pure Local Search (100% Free)
 
@@ -53,7 +53,7 @@ for r in response.results:
     print(f"URL: {r.url}")
     print(f"Summary: {r.summary}")
     for h in r.highlights:
-        print(f"  • {h}")
+        print(f"  - {h}")
     print("-" * 50)
 ```
 
@@ -94,7 +94,7 @@ if response.community_insights:
 
 ---
 
-## 🦜 LangChain & Agent Integration
+## LangChain & Agent Integration
 
 ### LangChain AI Agent Tool (`BrongtusSearchResults`)
 
@@ -150,7 +150,7 @@ print(answer)
 
 ---
 
-## 📚 API Reference
+## API Reference
 
 ### `Brongtus` Parameters
 
@@ -189,6 +189,6 @@ for r in response.results:
 
 ---
 
-## 📜 License
+## License
 
 MIT License. Free for open-source and commercial use.
