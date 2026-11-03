@@ -1,0 +1,58 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "brongtus"
+version = "0.1.0"
+description = "A free, local, intelligent search engine mimicking Exa with Playwright, LangGraph, up to 90% token pruning, and optional Gemini enhancement."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "Brongtus Contributors" }
+]
+keywords = [
+    "search",
+    "exa",
+    "brongtus",
+    "playwright",
+    "langgraph",
+    "langchain",
+    "web-scraping",
+    "token-pruning",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pydantic>=2.0",
+    "trafilatura>=1.6.0",
+    "justext>=3.0.0",
+    "playwright>=1.40.0",
+    "beautifulsoup4>=4.12.0",
+    "langgraph>=0.2.0",
+    "langchain-core>=0.3.0",
+    "httpx>=0.25.0",
+]
+
+[project.optional-dependencies]
+gemini = [
+    "langchain-google-genai>=2.0.0",
+    "google-genai>=0.1.0",
+]
+local-llm = [
+    "langchain-ollama>=0.2.0",
+]
+rerank = [
+    "flashrank>=0.2.0",
+]
+all = [
+    "brongtus[gemini,local-llm,rerank]",
+]
+
+[project.urls]
+Homepage = "https://github.com/brongtus/brongtus"
+Repository = "https://github.com/brongtus/brongtus"
